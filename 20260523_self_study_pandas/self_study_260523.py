@@ -107,8 +107,8 @@ titanic = sns.load_dataset('titanic')
 # 카테고리: 기록된 값을 종류별로 구분
 np.random.seed(2)
 s2 = pd.Series(np.random.randint(6, size=100))
-print(s2.tail())
-print(s2.value_counts())
+# print(s2.tail())
+# print(s2.value_counts())
 """ 각 value별 몇 개의 값이 나왔는지 수치 나옴
 2    22
 0    18
@@ -121,27 +121,27 @@ dtype: int64
 # 정렬: sort_index(), sort_values()
 # sort_index(): 값을 정렬하고 나서 index 배치를 리턴
 # sort_values(): 정렬하고 value에 따른 리턴
-print(s2.value_counts().sort_index())
-print(s2.value_counts().sort_values(ascending=False))
+# print(s2.value_counts().sort_index())
+# print(s2.value_counts().sort_values(ascending=False))
 
 # dataframe처럼 여러 컬럼을 가진경우 sort_values()로 정렬시 by 사용해 기준 설정
-print(df)
-print(df.sort_values(by=2))
+# print(df)
+# print(df.sort_values(by=2))
 
 # *행열 합계: sum()
 # 행과 열 합계를 구할 때 sum(axis=1 | 0)
 # 0 = 열, 1 = 행
 np.random.seed(3)
 df2 = pd.DataFrame(np.random.randint(10, size=(4, 8)))
-print(df2)
-print('sum axis=0: ', df2.sum(axis=0))  # axis=0 => 열별 합계 나열
+# print(df2)
+# print('sum axis=0: ', df2.sum(axis=0))  # axis=0 => 열별 합계 나열
 
 # 컬럼 하나 추가해서 합계 기록
 df2.loc['colTotal', :] = df2.sum()
-print(df2)
+# print(df2)
 
 df2.loc[:, 'indexTotal'] = df2.sum(axis=1)
-print(df2)
+# print(df2)
 
 # *apply(lambda ~)
 # 행이나 열 단위로 좀 더 복잡한 계산을 적용해야 할 때 사용하는 함수
@@ -151,16 +151,16 @@ df3 = pd.DataFrame({
     'B': [2,3,1,2,3],
     'C': [1,3,2,4,4]
 })
-print(df3)
+# print(df3)
 
 # 예: 각 열의 최대값과 최소값의 차이를 구한다면
-print(df3.apply(lambda x: x.max() - x.min()))
+# print(df3.apply(lambda x: x.max() - x.min()))
 
 # 예: 각 행의 최대값과 최소값의 차이를 구하라
-print(df3.apply(lambda x: x.max() - x.min(), axis=1))
+# print(df3.apply(lambda x: x.max() - x.min(), axis=1))
 
 # 예: 각 열에 대해 어떤 값이 얼마나 사용되는지를 확인한다면
-print(df3.apply(lambda x: x.value_counts(), axis=0))
+# print(df3.apply(lambda x: x.value_counts(), axis=0))
 
 # 타이타닉호의 승객 중 20살을 기준으로
 # 20살 이상이면 성인(adult), 20살 미만이면 미성년자(child)로 구별
@@ -170,8 +170,8 @@ titanic['성인구분'] = titanic.apply(lambda r: 'adult' if r.age >=20 else 'ch
 
 # *fillna() 함수
 # NaN을 원하는 값으로 바꿀 때 사용
-print('df: \n', df)
-print(df.fillna(100).astype(int))       # astype(자료형) : 전체 데이터의 자료형을 바꿈
+# print('df: \n', df)
+# print(df.fillna(100).astype(int))       # astype(자료형) : 전체 데이터의 자료형을 바꿈
 
 # cut(): 실수값을 경계선으로 지정하는 경우에 사용(분류)
 # qcut(): 갯수가 똑같은 구간으로 분류할 때 사용
@@ -182,25 +182,86 @@ ages = [0, 2, 10, 21, 23, 37, 31, 61, 20, 41, 32, 101]
 bins = [1, 20, 30, 50, 70, 100]     # 1~20 / 20~30 / 30~50 / 50~70 / 70~100의 구간을 만듦
 labels = ['미성년자', '청년', '중년', '장년', '노년']       # 각 구간별 명칭
 result = pd.cut(ages, bins=bins, labels = labels)
-print(result)
+# print(result)
 """
 [NaN, '미성년자', '미성년자', '청년', '청년', ..., '장년', '미성년자', '중년', '중년', NaN]
 Length: 12
 Categories (5, object): ['미성년자' < '청년' < '중년' < '장년' < '노년']
 """
-print(type(result))
+# print(type(result))
 
 # cut()의 반환 자료형이 Categorical 클래스 객체
 # 이 객체는 라벨 문자열을, codes 속성으로 정수로 인코딩된 값을 확인 가능
-print(result.categories)        # Index(['미성년자', '청년', '중년', '장년', '노년'], dtype='object')
-print(result.codes)         # [-1  0  0  1  1  2  2  3  0  2  2 -1] -1은 NaN값
+# print(result.categories)        # Index(['미성년자', '청년', '중년', '장년', '노년'], dtype='object')
+# print(result.codes)         # [-1  0  0  1  1  2  2  3  0  2  2 -1] -1은 NaN값
 
 # 위 결과를 데이터프레임에 적용한다면
 df4 = pd.DataFrame(ages, columns=['age'])
-print(df4)
+# print(df4)
 df4['age_category'] = pd.cut(ages, bins=bins, labels=labels)
-print(df4)
+# print(df4)
 
 # ?데이터 입출력
+# ,로 데이터 구분한 csv가 기본으로 다루어짐
+
+data = {
+    'c1' : [1, 2, 3],
+    'c2' : [1.11, 2.22, 3.33],
+    'c3' : ['one', 'two', 'three']
+}
 
 
+df = pd.DataFrame(data)
+# print(df)
+# df를 csv파일로 저장 처리. 한번 실행 후 주석 처리 필요
+# df.to_csv('sample1.csv', mode='w')
+
+# pd.read_csv(): csv 파일 읽어서, df 만들기 
+df2 = pd.read_csv('sample1.csv')
+print('csv read===========')
+# print(df2)
+# print(type(df2))        # <class 'pandas.core.frame.DataFrame'>
+
+# 파일에 기록 저장시 컬럼 라벨과 행인덱스 라벨 제외할 수 있음
+# df.to_csv('sample2.csv', mode='w', header=False, index=False)
+# 데이터 파일을 읽어 들일 때, 컬럼라벨을 추가할 수 있음
+df3 = pd.read_csv('sample2.csv', names=['아', '야', '어'])
+# print(df3)
+
+# 파일 읽어 들일 때, 특정 컬럼값을 인덱스 행으로 지정할 수 있음
+df4 = pd.read_csv('sample1.csv', index_col='c1')
+# print(df4)
+
+# 파일 기록시 , 대신에 원하는 seperator를 지정할 수 있음
+df4.to_csv('sample3.csv', mode='w', sep='\t')          # 데이터를 공백으로 구분
+# 공백으로 구분된 (regular expression) 문자열을 이용해서 구분자를 지정
+# 공백에 대한 정규표현식 문자열은 '\s+' 이다
+df5 = pd.read_csv('sample3.csv', sep='\s+') 
+# print(df5)
+
+# skiprows: 파일안에 건너뛰어야 되는 행이 있다면 
+df6 = pd.read_csv('sample3.csv', skiprows=[0, 1])
+# print(df6)
+
+# *파일의 특정값 NaN처리
+data2 = {
+    'c1': [1, 2, 3],
+    'c2': [ 1.11, 2.22, 3.33],
+    'c3': ['누락', 'two', 'three']
+}
+df7 = pd.DataFrame(data2)
+
+# df7.to_csv('sample5.csv', mode='w')
+df8 = pd.read_csv('sample5.csv', na_values=['누락'])
+print(df8)
+
+# 반대로 파일에 기록할 때 NaN 표시값을 다른 값으로 바꿀 수 있음
+# df8.to_csv(('sample6.csv', na_rep='값없음'))
+
+# 데이터 프레임에 인덱스 라벨 지정
+print(df)
+df.index = ['a', 'b', 'c']
+print(df)
+
+# 인터넷상에 있는 파일 읽을 수 있음. 
+df9 = pd.read_csv('https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv')
