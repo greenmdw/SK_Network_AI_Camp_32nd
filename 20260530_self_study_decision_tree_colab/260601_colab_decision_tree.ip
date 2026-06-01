@@ -1,0 +1,240 @@
+# **Pytorch 기반 은행 대출 상환/채무불이행 분류 실습**
+의사결정트리를 사용하여 은행 대출 신청자의 채무불이행 여부를 분류합니다.
+같은 분류 문제를 PyTorch의 신경망 분류 모델로 구현합니다.<br>
+
+전체 흐름
+
+1. 필요한 라이브러리 설치 및 불러오기  
+2. 데이터셋 준비  
+3. 데이터 탐색  
+4. 범주형/수치형 데이터 전처리  
+5. 학습 데이터와 테스트 데이터 분리  
+6. PyTorch Dataset / DataLoader 생성  
+7. PyTorch 분류 모델 정의  
+8. 모델 학습  
+9. 테스트 데이터 예측  
+10. Confusion Matrix와 정확도 평가
+# ============================================================
+# 1. 필요한 라이브러리 불러오기
+# ============================================================
+
+import pandas as pd
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
+from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+
+# OneHotEncoder는 문자 범주 데이터를 0과 1의 숫자 벡터로 변환합니다.
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, LabelEncoder
+# Pipeline은 여러 전처리 단계를 하나로 묶어 실행할 때 사용합니다.
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+import matplotlib.pyplot as plt
+import random
+import os
+import warnings
+# 불필요한 경고 메시지를 숨깁니다.
+warnings.filterwarnings("ignore")
+
+# 현재 사용 가능한 장치를 확인합니다.
+# Colab에서 GPU를 켜면 cuda가 출력되고, 그렇지 않으면 cpu가 출력됩니다.
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# 현재 학습에 사용할 장치를 출력합니다.
+print("사용 장치:", device)
+# ============================================================
+# 2. 난수 고정
+# ============================================================
+
+SEED = 123
+
+# 파이썬 random 라이브러리 난수 고정
+random.seed(SEED)
+# numpy 난수 고정
+np.random.seed(SEED)
+# 파이토치 cpu 난수 고정
+torch.manual_seed(SEED)
+# 파이토치 gpu 난수 고정
+torch.cuda.manual_seed_all(SEED)
+
+# cuda 연산의 재현성 높이기 위한 설정
+torch.backends.cudnn.deterministic = True
+# 실행 속도 최적화보다 재현성 우선 설정
+torch.backends.cudnn.benchmark = False
+## 3. 데이터 셋 준비<br>
+
+```
+credit_info <- read.csv("data/credit_info.csv", stringsAsFactors = T)
+
+```
+
+Colab에서는 로컬 파일이 없을 수 있으므로 다음 순서로 데이터를 준비합니다.<br>
+
+data/credit_info.csv가 있으면 그 파일을 사용
+없으면 공개 German Credit 데이터셋 CSV를 자동 다운로드
+목표 컬럼이 default로 되어 있으면 Repay로 이름을 바꾸어 원본 코드와 비슷하게 맞춤
+# ============================================================
+# 3. 데이터 불러오기
+# ============================================================
+
+local_path = "data/credit_info.csv"
+url = "https://raw.githubusercontent.com/stedy/Machine-Learning-with-R-datasets/master/credit.csv"
+
+os.makedirs('data', exist_ok=True)
+
+if os.path.exists(local_path):
+  credit_info = pd.read_csv(local_path)
+else:
+  credit_info = pd.read_csv(url)
+  credit_info.to_csv(local_path, index=False)
+
+# 목표 변수를 repay.
+if 'Repay' not in credit_info.columns and 'default' in credit_info.columns:
+  credit_info = credit_info.rename(columns={'default': 'repay'})
+
+credit_info.head()
+
+
+# ============================================================
+# 4. 데이터 구조 확인
+# ============================================================
+print("데이터 크기:", credit_info.shape)
+credit_info.info()
+print("\n컬럼 목록:")
+print(credit_info.columns.tolist())
+# ============================================================
+# 5. 기본 탐색
+# ============================================================
+# checking_balance 컬럼은 신청자의 수표 계좌 잔고 범주를 의미합니다.
+# value_counts()는 R의 table()과 비슷하게 값별 개수를 세어 줍니다.
+print("checking_balance 빈도:")
+print(credit_info['checking_balance'].value_counts())
+
+# savings_balance 컬럼은 신청자의 저축 계좌 잔고 범주를 의미합니다.
+print("\nsavings_balance 빈도:")
+print(credit_info['savings_balance'].value_counts())
+
+# months_loan_duration은 대출 기간입니다.
+# describe()는 평균, 표준편차, 최솟값, 최댓값 등을 보여줍니다.
+print("\nmonths_loan_duration 요약:")
+print(credit_info["months_loan_duration"].describe())
+
+# amount는 대출 금액입니다.
+print("\namount 요약:")
+print(credit_info["amount"].describe())
+
+# Repay는 상환 여부 또는 채무불이행 여부를 나타내는 목표 변수입니다.
+print("\nRepay 빈도:")
+print(credit_info["repay"].value_counts())
+
+# Repay 비율을 확인합니다.
+print("\nRepay 비율:")
+print(credit_info["repay"].value_counts(normalize=True))
+## 6. 입력 데이터와 정답 데이터 분리<br>
+
+
+*   x: 모델이 학습할 입력 특성
+*   y: 맞춰야 하는 정답 라벨
+
+
+
+# 6.target 값 라벨링
+
+target_col = 'repay'
+
+if target_col not in credit_info.columns:
+  raise ValueError('데이터에 repay 없음')
+
+x = credit_info.drop(columns=[target_col])
+y = credit_info[target_col]
+
+label_encoder = LabelEncoder()
+y_encoded = label_encoder.fit_transform(y)
+
+print('라벨 매핑')
+for original_label, encoded_label in zip(label_encoder.classes_, range(len(label_encoder.classes_))):
+  print(f'{original_label} -> {encoded_label}')
+# 7. 수치형 컬럼과 범주형 컬럼 구분
+
+# 수치형 컬럼 모으기
+numeric_features = x.select_dtypes(include=['int64', 'float64']).columns.tolist()
+
+# 범주형 컬럼 모으기
+categorical_features = x.select_dtypes(include=['object', 'category', 'bool']).columns.tolist()
+
+# 수치형 컬럼 목록을 출력합니다.
+print("수치형 컬럼:", numeric_features)
+
+# 범주형 컬럼 목록을 출력합니다.
+print("범주형 컬럼:", categorical_features)
+# 8. 학습 데이터 테스트 데이터 분리
+# stratify=y_eoncoded 는 정답 라벨 비율이 학습/테스트에 비슷하게 유지되도록 세팅
+x_train, x_test, y_train, y_test = train_test_split(
+    x,
+    y_encoded,
+    random_state=SEED,
+    stratify=y_encoded
+)
+# 분리된 데이터 크기를 확인합니다.
+print("X_train 크기:", x_train.shape)
+print("X_test 크기:", x_test.shape)
+print("y_train 크기:", y_train.shape)
+print("y_test 크기:", y_test.shape)
+
+
+# 학습 데이터의 클래스 비율을 확인합니다.
+print("\n학습 데이터 클래스 비율:")
+print(pd.Series(y_train).value_counts(normalize=True).sort_index())
+# 테스트 데이터의 클래스 비율을 확인합니다.
+print("\n테스트 데이터 클래스 비율:")
+print(pd.Series(y_test).value_counts(normalize=True).sort_index())
+
+
+
+## 7. 데이터 전처리
+
+
+*   수치형 컬럼: 평균 0, 표준편차 1에 가깝도록 표준화
+*   범주형 컬럼: one-hot encoding으로 0, 1 숫자 벡터 변환
+
+
+# 9. 전처리 파이프라인 생성
+# 수치형 데이터 전 처리
+numeric_transformer = Pipeline(
+    steps=[
+        # StandardScaler는 수치 데이터의 크기 차이를 줄여 학습을 안정적으로 만듬
+        ('scaler', StandardScaler())
+    ]
+)
+# 범주형 데이터 전 처리
+categorical_transformer = Pipeline(
+    steps=[
+        # handle_unknown='ignore'는 테스트 데이터에 학습 때 보지 못한 범주나와도 에러를 막음
+        ('onehot', OneHotEncoder(handle_unknown='ignore'))
+    ]
+)
+
+# ColumnTransformer는 컬럼 종류별로 다른 전처리 적용
+processor = ColumnTransformer(
+    transformers=[
+        ('num', numeric_transformer, numeric_features),
+        ('cat', categorical_transformer, categorical_features)
+    ]
+)
+
+x_train_processed = processor.fit_transform(x_train)
+x_test_processed = processor.transform(x_test)
+# OneHotEncoder 결과가 희소 행렬일 수 있으므로 일반 numpy 배열로 변환
+x_train_processed = x_train_processed.toarray() if hasattr(x_train_processed, 'toarray') else x_train_processed
+X_test_processed = x_test_processed.toarray() if hasattr(x_test_processed, "toarray") else x_test_processed
+
+# PyTorch는 float32 자료형을 주로 사용하므로 float32로 변환합니다.
+X_train_processed = x_train_processed.astype(np.float32)
+X_test_processed = x_test_processed.astype(np.float32)
+
+# 정답 라벨은 분류 문제에서 long 타입으로 사용합니다.
+y_train = y_train.astype(np.int64)
+y_test = y_test.astype(np.int64)
